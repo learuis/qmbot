@@ -6,7 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
 
-from cogs.common import is_docker
+from functions.common import is_docker
 
 load_dotenv('data/server.env')
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -39,9 +39,6 @@ async def on_ready():
         await channel.send(f'QM_Bot PROD (use qm/) started on {loadtime}.')
     else:
         await channel.send(f'QM_Bot TEST (use qmt/) started on {loadtime}.')
-
-    # bot.add_view(RegistrationButton())
-    # bot.add_view(RoleplayingButton())
 
 @bot.event
 async def on_command_error(ctx, error):

@@ -18,6 +18,7 @@ class HelloWorld(commands.Cog):
 
         """
         await ctx.reply(f'Hello World!')
+
 @commands.Cog.listener()
 async def setup(bot):
     await bot.add_cog(HelloWorld(bot))
