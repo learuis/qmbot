@@ -1,0 +1,10 @@
+/data/**
+*.dat
+*.sqlite
+*.log
+*.env
+/Dockerfile
+/requirements.txt
+/compose.yaml
+/.dockerignore
+/unit_tests/**
