@@ -47,4 +47,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the application.
-CMD [ "python3", "./VeramaBot.py" ]
+CMD [ "python3", "./qmbot.py" ]

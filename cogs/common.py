@@ -1,3 +1,5 @@
+import os
+
 def is_docker():
     path = '/proc/self/cgroup'
     return (

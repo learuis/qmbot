@@ -4,14 +4,15 @@ import os
 from time import localtime, strftime
 from discord.ext import commands
 from discord.ext.commands import Bot
-from discord.ext import tasks
 from dotenv import load_dotenv
 
 from cogs.common import is_docker
 
 load_dotenv('data/server.env')
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
+GUILD = int(os.getenv('DISCORD_GUILD'))
+BOT_CHANNEL = int(os.getenv('BOT_CHANNEL'))
+
 
 intents = discord.Intents.all()
 intents.message_content = True
@@ -50,7 +51,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CheckFailure):
         print(f'Command from {ctx.message.author} failed checks. '
               f'{ctx.message.channel.id}.')
-        channel = bot.get_channel(OUTCASTBOT_CHANNEL)
+        channel = bot.get_channel(BOT_CHANNEL)
         await ctx.send(f'You do not have permission to use this command, or you cannot use that command in this '
                        f'channel. Try {channel.mention}!')
         return
