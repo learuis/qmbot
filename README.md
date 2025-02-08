@@ -1,2 +1,2 @@
-# VeramaBot
-A discord bot for Conan Exiles
+# Quest Master Bot
+A discord bot for Quest Master
