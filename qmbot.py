@@ -1,24 +1,25 @@
 import discord
-import time
 import os
-from time import localtime, strftime
 from discord.ext import commands
 from discord.ext.commands import Bot
 from dotenv import load_dotenv
-from cogs.DungeonSearch import get_game
 
-from functions.common import is_docker
+from functions.common import is_docker, get_game
 
 load_dotenv('data/server.env')
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = int(os.getenv('DISCORD_GUILD'))
-BOT_CHANNEL = int(os.getenv('BOT_CHANNEL'))
-GAMEID = int(os.getenv('MODIO_GAME_ID'))
+GUILD = os.getenv('DISCORD_GUILD')
+BOT_CHANNEL = os.getenv('BOT_CHANNEL')
+GAMEID = os.getenv('MODIO_GAME_ID')
 
 intents = discord.Intents.all()
 intents.message_content = True
 
-bot: Bot = commands.Bot(command_prefix=['qm/', 'q/', 'aa/', 'QM/', 'Qm/', 'qM/', 'Aa/', 'aA/', 'AA/'], intents=intents)
+if is_docker():
+    bot: Bot = commands.Bot(command_prefix=['qm/', 'q/', 'aa/', 'QM/', 'Qm/', 'qM/', 'Aa/', 'aA/', 'AA/'],
+                            intents=intents)
+else:
+    bot: Bot = commands.Bot(command_prefix=['qmt/'], intents=intents)
 
 game = get_game()
 bot.game = game
