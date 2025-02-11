@@ -4,6 +4,7 @@ import re
 import discord
 import math
 import requests
+import json
 from discord.ext import commands
 from functions.common import get_mods, custom_cooldown
 from functions.Buttons import Buttons
@@ -93,6 +94,7 @@ class DungeonSearch(commands.Cog):
         searchPrefix = 'https://mod.io/search/users'
         urlPrefix = 'https://mod.io/u/'
         memberPrefix = 'https://mod.io/members'
+        modString = ''
 
         embed = discord.Embed(title=f'No dungeons or blueprints with ID {modid} found!')
 
@@ -108,11 +110,13 @@ class DungeonSearch(commands.Cog):
 
         if 'Blueprint' in mod.tags:
             titlePrefix = '<:Blueprint:1334602701308432454> '
+            modType = 'Blueprint'
             mod.tags.pop('Blueprint')
             isBlueprint = True
         else:
             mod.tags.pop('Dungeon')
             titlePrefix = '<:Map:1337877181237301279> '
+            modType = 'Dungeon'
 
         for tag, value in mod.tags.items():
             tagString += f'{tag} | '
@@ -120,13 +124,23 @@ class DungeonSearch(commands.Cog):
         tagString = tagString[:-3]
 
         embed = discord.Embed(title=f'{titlePrefix}{mod.name}')
-        embed.add_field(name=f'Mod ID', value=f'[{mod.id}]({mod.profile})')
+        embed.add_field(name=f'{modType} ID', value=f'[{mod.id}]({mod.profile})')
         embed.add_field(name=f'Maker', value=f'[{mod.submitter.username}]'
                                              f'({memberPrefix}/{mod.submitter.name_id})')
         embed.add_field(name=f'Likes', value=f'<a:qmheart:1336494334366978139> {mod.stats.positive}')
         embed.add_field(name=f'Description', value=f'{mod.summary}', inline=False)
         embed.add_field(name=f'Tags', value=f'{tagString}', inline=False)
         embed.set_image(url=f'{mod.logo.original}')
+
+        if 'Modded' in mod.tags:
+            metadata = json.loads(mod.metadata)
+            if metadata:
+                if 'Mods' in metadata.keys():
+                    modList = metadata['Mods']
+                    print(f'{len(modList)} mods included')
+                    for dungeonMod in modList:
+                        modString += f'{dungeonMod["Id"]} - {dungeonMod["Name"]} | '
+                    embed.add_field(name=f'Mods', value=f'{modString[:-3]}', inline=False)
 
         if not isBlueprint:
 

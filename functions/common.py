@@ -38,7 +38,6 @@ def get_mods(bot, qmfilter):
 def custom_cooldown(ctx):
 
     roles = {role.name for role in ctx.author.roles}
-    print(roles)
     if 'Moderator' in roles:
         return None
     else:
