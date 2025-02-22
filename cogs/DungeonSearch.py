@@ -59,6 +59,7 @@ class DungeonSearch(commands.Cog):
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
     async def taglist(self, ctx):
         """
+        Lists all of the tags for use in qm/dungeonsearch tags
 
         Parameters
         ----------
@@ -460,13 +461,15 @@ class DungeonSearch(commands.Cog):
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
     async def dungeonsearch(self, ctx, searchField: str, searchString: str):
         """
-        Searches for dungeons by partial name. Limit of 5 results.
+        Searches for dungeons by name or tags. Limit of 5 results.
 
         Parameters
         ----------
         ctx
         searchField
+            name or tags
         searchString
+            The string to search. Use double quotes for searches with spaces. Use qm/taglist for list of all valid tags.
 
         Returns
         -------
@@ -550,6 +553,9 @@ class DungeonSearch(commands.Cog):
                                 value=f"<https://mod.io/g/questmaster?_q={searchString}>")
             view = Buttons(ctx, *modLabels)
             await view.init()
+
+            embed.add_field(name=f"Note: Buttons only function for 15 seconds after using the command.",
+                            value=f"")
 
             await message.edit(embed=embed, view=view)
             return
