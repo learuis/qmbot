@@ -24,15 +24,15 @@ class Buttons(discord.ui.View):
     async def add_buttons(self, ctx, label1, label2, label3, label4, label5):
         button1, button2, button3, button4, button5 = False, False, False, False, False
         if label1:
-            button1 = discord.ui.Button(label=label1)
+            button1 = discord.ui.Button(label=f'qm/i {label1}')
         if label2:
-            button2 = discord.ui.Button(label=label2)
+            button2 = discord.ui.Button(label=f'qm/i {label2}')
         if label3:
-            button3 = discord.ui.Button(label=label3)
+            button3 = discord.ui.Button(label=f'qm/i {label3}')
         if label4:
-            button4 = discord.ui.Button(label=label4)
+            button4 = discord.ui.Button(label=f'qm/i {label4}')
         if label5:
-            button5 = discord.ui.Button(label=label5)
+            button5 = discord.ui.Button(label=f'qm/i {label5}')
 
         async def mod_button1(interaction: discord.Interaction):
             await interaction.response.send_message(f'Fetching details for {label1}.')

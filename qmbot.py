@@ -2,14 +2,14 @@ import discord
 import os
 from discord.ext import commands
 from discord.ext.commands import Bot
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 from functions.common import is_docker, get_game
 
-load_dotenv('data/server.env')
+# load_dotenv('data/server.env')
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-BOT_CHANNEL = os.getenv('BOT_CHANNEL')
+BOT_CHANNEL = int(os.getenv('BOT_CHANNEL'))
 GAMEID = os.getenv('MODIO_GAME_ID')
 
 intents = discord.Intents.all()
@@ -21,14 +21,14 @@ if is_docker():
 else:
     bot: Bot = commands.Bot(command_prefix=['qmt/'], intents=intents)
 
-game = get_game()
-bot.game = game
-
 @bot.event
 async def on_ready():
     for f in os.listdir('./cogs'):
         if f.endswith('.py'):
             await bot.load_extension(f'cogs.{f[:-3]}')
+
+    game = await get_game()
+    bot.game = game
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -53,7 +53,7 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, discord.errors.DiscordServerError):
         channel = bot.get_channel(BOT_CHANNEL)
-        await channel.send(f'A discord server error has occurred. QM_Bot may need to be restarted to recover.')
+        await channel.send(f'A discordbot server error has occurred. QM_Bot may need to be restarted to recover.')
         return
 
     else:
