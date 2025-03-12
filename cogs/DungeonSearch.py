@@ -144,6 +144,60 @@ class DungeonSearch(commands.Cog):
         resultList = sum(results, ())
         await ctx.reply(resultList)
 
+    @commands.command(name='mods', aliases=['modlinks'])
+    @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
+    async def mods(self, ctx, modid: int):
+        """
+        Locate a dungeon by ID and list all mod information
+        Example: qm/mods 1234567
+
+        Parameters
+        ----------
+        ctx
+        modid
+            Exact ID to look up.
+
+        Returns
+        -------
+
+        """
+        embed = discord.Embed(title=f'No dungeons or blueprints with ID {modid} found!')
+        modString = ''
+        localModString = ''
+        localMods = 0
+        steamModPrefix = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
+
+        mod = await get_mod(self.bot, modid)
+        if not mod:
+            await ctx.send(embed=embed)
+            return
+
+        if 'Modded' in mod.tags:
+            metadata = json.loads(mod.metadata)
+            if metadata:
+                if 'Mods' in metadata.keys():
+                    modList = metadata['Mods']
+                    embed = discord.Embed(title=f'{mod.name} ({modid}):', url=f'{mod.profile}')
+                    embed.add_field(name=f'{len(modList)} Bundled Mods', value=f'', inline=False)
+                    print(f'{len(modList)} mods included')
+                    for dungeonMod in modList:
+                        modString = f'{dungeonMod["Name"]}'
+                        modLink = find_steam_mod_by_tag(f'{dungeonMod["Id"]}')
+                        if modLink:
+                            embed.add_field(name=f'', value=f'[{modString}]({steamModPrefix}{modLink})', inline=False)
+                        else:
+                            localModString += f'{dungeonMod["Name"]} | '
+                            localMods += 1
+
+                    if localMods:
+                        embed.add_field(name=f'Local Mods (Non-Steam Workshop)',
+                                        value=f'{localModString[:-3]}', inline=False)
+        else:
+            embed = discord.Embed(title=f'This dungeon contains no bundled mods.')
+
+        await ctx.reply(embed=embed)
+
+
     @commands.command(name='idlookup', aliases=['id', 'dungeonid', 'i'])
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
     async def idLookup(self, ctx, modid: int):
@@ -207,6 +261,10 @@ class DungeonSearch(commands.Cog):
 
         tagString = tagString[:-3]
 
+        # print(f'Description: {len(mod.summary)} - {mod.summary}')
+        # print(f'Tag String: {len(tagString)} - {tagString}')
+        # print(f'Logo: {len(mod.logo.original)} - {mod.logo.original}')
+
         embed = discord.Embed(title=f'{titlePrefix}{mod.name}')
         embed.add_field(name=f'{modType} ID', value=f'[{mod.id}]({mod.profile})')
         embed.add_field(name=f'Maker', value=f'[{mod.submitter.username}]'
@@ -223,11 +281,12 @@ class DungeonSearch(commands.Cog):
                     modList = metadata['Mods']
                     print(f'{len(modList)} mods included')
                     for dungeonMod in modList:
-                        modLink = find_steam_mod_by_tag(f'{dungeonMod["Id"]}')
-                        if modLink:
-                            modString += f'[{dungeonMod["Name"]}]({steamModPrefix}{modLink}) | '
-                        else:
-                            modString += f'{dungeonMod["Name"]} | '
+                        # modLink = find_steam_mod_by_tag(f'{dungeonMod["Id"]}')
+                        # if modLink:
+                        #   modString += f'[{dungeonMod["Name"]}]({steamModPrefix}{modLink}) | '
+                        # else:
+                        modString += f'{dungeonMod["Name"]} | '
+                    # print(f'Mods: {len(modString[:-3])} - {modString[:-3]}')
                     embed.add_field(name=f'Bundled Mods', value=f'{modString[:-3]}', inline=False)
 
         if not isBlueprint:
