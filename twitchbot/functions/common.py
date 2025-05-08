@@ -1,3 +1,4 @@
+import asyncio
 import os
 import modio
 import discord
@@ -87,12 +88,13 @@ async def get_mods(bot, qmfilter):
     else:
         return False, False
 
-async def get_all_mods(gameid, qmfilter):
+def get_all_mods(game, qmfilter):
     offsetValue = 0
     allMods = []
     queryCount = 0
     tagString = ''
 
+    print(f'get_all_mods function game: {game}')
     while True:
         queryCount += 1
         if queryCount > 100:
@@ -100,7 +102,7 @@ async def get_all_mods(gameid, qmfilter):
             # time.sleep(60)
             queryCount = 0
 
-        modList = await gameid.async_get_mods(filters=qmfilter)
+        modList = game.get_mods(filters=qmfilter)
         print(modList)
         offsetValue += len(modList.results)
         qmfilter.offset(offsetValue)
@@ -110,10 +112,10 @@ async def get_all_mods(gameid, qmfilter):
         if not len(modList.results):
             return allMods, queryCount
 
-async def get_latest_comment(mod, qmfilter):
+def get_latest_comment(mod, qmfilter):
     commentString = ''
 
-    comments = await mod.async_get_comments(filters=qmfilter)
+    comments = mod.get_comments(filters=qmfilter)
     if len(comments[0]):
 
         latestComment = comments[0]
@@ -123,14 +125,20 @@ async def get_latest_comment(mod, qmfilter):
 
     return commentString
 
-async def get_mod(bot, mod_to_retrieve):
-    print(bot.game)
+async def get_mod(game, mod_to_retrieve):
+    print(game)
     try:
-        mod = await bot.game.async_get_mod(mod_to_retrieve)
+        mod = await game.async_get_mod(mod_to_retrieve)
     except modio.errors.modioException:
         return
     # mod = await bot.game.async_get_mod(mod_to_retrieve)
     return mod
+
+def int_epoch_time():
+    current_time = datetime.now()
+    epoch_time = int(round(current_time.timestamp()))
+
+    return epoch_time
 
 
 async def write_user_to_db(game, user_id: int):
@@ -144,7 +152,7 @@ async def write_user_to_db(game, user_id: int):
     con = sqlite3.connect(f'data/dungeon_database.db'.encode('utf-8'))
     cur = con.cursor()
 
-    modTuple = await get_all_mods(game, qmfilter)
+    modTuple = get_all_mods(game, qmfilter)
     # mod = await get_mod(bot, user_id)
     print(modTuple)
     modList = modTuple[0]
@@ -161,6 +169,41 @@ async def write_user_to_db(game, user_id: int):
     con.commit()
     con.close()
     # await ctx.reply(f'Updating the database!')
+
+async def write_to_queue(channel, dungeon_id, dungeon_name, dungeon_creator):
+
+    con = sqlite3.connect(f'data/dungeon_database.db'.encode('utf-8'))
+    cur = con.cursor()
+
+    query = (f'select position from ( '
+             f'select row_number() over (order by added_at asc) as position, '
+             f'channel_name, dungeon_id from dungeon_queue '
+             f'where channel_name = \'{channel}\' ) '
+             f'where dungeon_id = {dungeon_id} and channel_name = \'{channel}\'')
+    cur.execute(f"{query}")
+    result = cur.fetchone()
+    if not result:
+        query = (f'insert or replace into dungeon_queue (channel_name, added_at, dungeon_id, dungeon_name, dungeon_creator) '
+                 f'values (\'{channel}\', {int_epoch_time()}, {dungeon_id}, \'{dungeon_name}\', \'{dungeon_creator}\')')
+        print(f'{query}')
+        cur.execute(f"{query}")
+        con.commit()
+
+        query = (f'select position from ( '
+                 f'select row_number() over (order by added_at asc) as position, '
+                 f'channel_name, dungeon_id from dungeon_queue '
+                 f'where channel_name = \'{channel}\' ) '
+                 f'where dungeon_id = {dungeon_id} and channel_name = \'{channel}\'')
+        cur.execute(f"{query}")
+
+        position = cur.fetchone()[0]
+        con.close()
+
+        return f"Added {dungeon_name} ({dungeon_id}) to the queue at position # {position}"
+    else:
+        con.close()
+        return f"{dungeon_name} ({dungeon_id}) is already in the queue at position # {result[0]}"
+
 
 async def write_dungeon_to_db(game, dungeon_id: int):
 
@@ -181,7 +224,13 @@ async def write_dungeon_to_db(game, dungeon_id: int):
     commentfilter.limit(1)
     commentfilter.sort("id", reverse=True)
 
-    modList, queryCount = await get_all_mods(game, qmfilter)
+    print(f'write function game: {game}')
+    # task = asyncio.create_task(get_all_mods(game, qmfilter))
+    # modList, queryCount = await task
+    modList, queryCount = get_all_mods(game, qmfilter)
+    print(modList)
+    if len(modList) == 0:
+        return False
 
     # print(len(modList.results), modList.results)
 
@@ -193,7 +242,7 @@ async def write_dungeon_to_db(game, dungeon_id: int):
             queryCount = 0
 
         # if 'comments' in option:
-        comment = await get_latest_comment(mod, commentfilter)
+        comment = get_latest_comment(mod, commentfilter)
         splitComment = comment.split(f'|')
         # account for comments before june 2024
         if len(splitComment) == 5:

@@ -7,7 +7,8 @@ import requests
 import json
 from discord.ext import commands
 
-from functions.common import get_mods, custom_cooldown, find_steam_mod_by_tag, get_mod, db_query, get_og_image
+from functions.common import get_mods, custom_cooldown, find_steam_mod_by_tag, get_mod, db_query, get_og_image, \
+    ms_to_string, date_format, write_dungeon_to_db, write_user_to_db
 from functions.Buttons import Buttons
 
 # from dotenv import load_dotenv
@@ -198,9 +199,9 @@ class DungeonSearch(commands.Cog):
         await ctx.reply(embed=embed)
 
 
-    @commands.command(name='idlookup', aliases=['id', 'dungeonid', 'i'])
+    @commands.command(name='idlookup2', aliases=['id2', 'dungeonid2', 'i2'])
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
-    async def idLookup(self, ctx, modid: int):
+    async def idLookup2(self, ctx, modid: int):
         """
         Locate a dungeon by ID and show information about it.
         Example: qm/idlookup 1234567
@@ -220,6 +221,7 @@ class DungeonSearch(commands.Cog):
         tagString = ''
         commentString = ''
         recordString = ' in '
+        avgString = ''
         isBlueprint = False
         searchPrefix = 'https://mod.io/search/users'
         urlPrefix = 'https://mod.io/u/'
@@ -270,6 +272,8 @@ class DungeonSearch(commands.Cog):
         embed.add_field(name=f'Maker', value=f'[{mod.submitter.username}]'
                                              f'({memberPrefix}/{mod.submitter.name_id})')
         embed.add_field(name=f'Likes', value=f'<a:qmheart:1336494334366978139> {mod.stats.positive}')
+        embed.add_field(name=f'Uploaded', value=f'{date_format(str(mod.live))} UTC', inline=False)
+        embed.add_field(name=f'Last Updated', value=f'{date_format(str(mod.updated))} UTC', inline=True)
         embed.add_field(name=f'Description', value=f'{mod.summary}', inline=False)
         embed.add_field(name=f'Tags', value=f'{tagString}', inline=False)
         embed.set_image(url=f'{mod.logo.original}')
@@ -318,18 +322,36 @@ class DungeonSearch(commands.Cog):
 
                 wrHolder = r.url.replace(f'{urlPrefix}', f'')
 
-                milliseconds = wrTime[-3:]
-                seconds = (int(wrTime) // 1000) % 60
-                minutes = (int(wrTime) // (1000 * 60)) % 60
-                hours = (int(wrTime) // (1000 * 60 * 60)) % 60
-                if hours:
-                    recordString += f'{hours}h, '
-                if minutes:
-                    recordString += f'{minutes}m, '
-                if seconds:
-                    recordString += f'{seconds}s '
-                if milliseconds:
-                    recordString += f'{milliseconds}ms'
+                recordString += ms_to_string(wrTime)
+
+                avgString = ms_to_string(completionAvg)
+
+                # milliseconds = wrTime[-3:]
+                # seconds = (int(wrTime) // 1000) % 60
+                # minutes = (int(wrTime) // (1000 * 60)) % 60
+                # hours = (int(wrTime) // (1000 * 60 * 60)) % 60
+                # if hours:
+                #     recordString += f'{hours}h, '
+                # if minutes:
+                #     recordString += f'{minutes}m, '
+                # if seconds:
+                #     recordString += f'{seconds}s '
+                # if milliseconds:
+                #     recordString += f'{milliseconds}ms'
+                #
+                # milliseconds = completionAvg[-3:]
+                # seconds = (int(completionAvg) // 1000) % 60
+                # minutes = (int(completionAvg) // (1000 * 60)) % 60
+                # hours = (int(completionAvg) // (1000 * 60 * 60)) % 60
+                # if hours:
+                #     recordString += f'{hours}h, '
+                # if minutes:
+                #     recordString += f'{minutes}m, '
+                # if seconds:
+                #     recordString += f'{seconds}s '
+                # if milliseconds:
+                #     recordString += f'{milliseconds}ms'
+
             else:
                 wrHolder = f'Uncleared'
                 recordString = f''
@@ -340,15 +362,15 @@ class DungeonSearch(commands.Cog):
                 # CompletionTimeCount | CompletionTimeAverageInMilliseconds
 
             embed.add_field(name=f'World Record', value=f'{wrHolder}{recordString}', inline=True)
+            embed.add_field(name=f'Average Clear Time', value=f'{avgString}', inline=True)
             embed.add_field(name=f'Clear Rate', value=f'{completions}/{attempts} - '
                                                       f'({completionRate}%)', inline=True)
 
         await ctx.reply(embed=embed)
 
-    @commands.command(name='idlookup2')
-    @commands.has_any_role(BOT_ACCESS_ROLE)
+    @commands.command(name='idlookup', aliases=['id', 'dungeonid', 'i'])
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
-    async def idLookup2(self, ctx, modid: int):
+    async def idLookup(self, ctx, modid: int):
         """
         Locate a dungeon by ID and show information about it.
         Example: qm/idlookup 1234567
@@ -377,6 +399,11 @@ class DungeonSearch(commands.Cog):
 
         embed = discord.Embed(title=f'No dungeons or blueprints with ID {modid} found!')
 
+        user_id = await write_dungeon_to_db(self.bot.game, modid)
+        print(f"user id {user_id}")
+
+        await write_user_to_db(self.bot.game, int(user_id))
+
         queryString = (f"select dungeons.*, users.username from dungeons "
                        f"left join users on dungeons.creator_user_id = users.user_id where "
                        f"dungeons.id = {modid} limit 1")
@@ -386,9 +413,10 @@ class DungeonSearch(commands.Cog):
             return
 
         resultList = sum(results, ())
+        print(resultList)
         (mod_id, mod_name, mod_creator_id, mod_summary,
          mod_link, mod_tagString, mod_comment, mod_likes, attempts, completions, failures, wrTime,
-         wrName, completionTime, completionAvg, mod_creator_name) = resultList
+         wrName, completionTime, completionAvg, uploaded, updated, mod_creator_name) = resultList
         titlePrefix = '<:Map:1337877181237301279> '
         mod_type = 'Dungeon'
 
@@ -400,6 +428,9 @@ class DungeonSearch(commands.Cog):
         embed.add_field(name=f'Maker', value=f'[{mod_creator_name}]'
                                              f'({memberPrefix}/{mod_creator_id})')
         embed.add_field(name=f'Likes', value=f'<a:qmheart:1336494334366978139> {mod_likes}')
+        print(f"uploaded: {uploaded}, updated: {updated}")
+        embed.add_field(name=f'Uploaded', value=f'{date_format(str(uploaded))} UTC', inline=False)
+        embed.add_field(name=f'Last Updated', value=f'{date_format(str(updated))} UTC', inline=True)
         embed.add_field(name=f'Description', value=f'{mod_summary}', inline=False)
         embed.add_field(name=f'Tags', value=f'{mod_tagString}', inline=False)
 
