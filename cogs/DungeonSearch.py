@@ -6,6 +6,7 @@ import math
 import requests
 import json
 from discord.ext import commands
+from discord.types import embed
 
 from functions.common import get_mods, custom_cooldown, find_steam_mod_by_tag, get_mod, db_query, get_og_image, \
     ms_to_string, date_format, write_dungeon_to_db, write_user_to_db
@@ -368,7 +369,14 @@ class DungeonSearch(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command(name='idlookup', aliases=['id', 'dungeonid', 'i'])
+    @commands.command(name='command_sync')
+    @commands.has_any_role(BOT_ACCESS_ROLE)
+    async def command_sync(self, ctx):
+        await self.bot.tree.sync()
+        await ctx.reply(f'Command sync completed.')
+        return
+
+    @commands.hybrid_command(name='idlookup', aliases=['id', 'dungeonid', 'i'], with_app_command=True)
     @commands.dynamic_cooldown(custom_cooldown, type=commands.BucketType.user)
     async def idLookup(self, ctx, modid: int):
         """

@@ -8,3 +8,5 @@
 /compose.yaml
 /.dockerignore
 /unit_tests/**
+/docker-compose.yaml
+/twitchbot/Dockerfile

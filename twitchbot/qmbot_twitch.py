@@ -1,5 +1,7 @@
+import math
 import sqlite3
 
+import requests
 from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator
 from twitchAPI.type import AuthScope, ChatEvent
@@ -73,6 +75,10 @@ async def test_command(cmd: ChatCommand):
         await cmd.send(f'{cmd.user.name}: {cmd.parameter}')
 
 async def qm_info(cmd: ChatCommand):
+    searchPrefix = 'https://mod.io/search/users'
+    urlPrefix = 'https://mod.io/u/'
+    recordString = f' in '
+
     try:
         int(cmd.parameter)
     except ValueError:
@@ -107,7 +113,35 @@ async def qm_info(cmd: ChatCommand):
      mod_link, mod_tagString, mod_comment, mod_likes, attempts, completions, failures, wrTime,
      wrName, completionTime, completionAvg, uploaded, updated, mod_creator_name) = resultList
 
-    await cmd.reply(f'ID: {mod_id}\nName: {mod_name}\nLikes: {mod_likes}\n')
+    if mod_comment:
+        # latest_comment = mod_comment.split(f'|')
+        # attempts, completions, failures, wrTime, wrName, completionTime, completionAvg = latest_comment
+        completionRate = math.floor((int(completions) / int(attempts)) * 100)
+
+        r = requests.head(f'{searchPrefix}/{wrName}', allow_redirects=True)
+
+        wrHolder = r.url.replace(f'{urlPrefix}', f'')
+
+        milliseconds = str(wrTime)[-3:]
+        seconds = (int(wrTime) // 1000) % 60
+        minutes = (int(wrTime) // (1000 * 60)) % 60
+        hours = (int(wrTime) // (1000 * 60 * 60)) % 60
+        if hours:
+            recordString += f'{hours}h, '
+        if minutes:
+            recordString += f'{minutes}m, '
+        if seconds:
+            recordString += f'{seconds}s '
+        if milliseconds:
+            recordString += f'{milliseconds}ms'
+    else:
+        wrHolder = f'Uncleared'
+        recordString = f''
+        completions = 0
+        attempts = 0
+        completionRate = 0
+
+    await cmd.reply(f'({mod_id}) {mod_name} by {mod_creator_name}. ***Clears: {completions}({completionRate}%) ***WR: {wrHolder}{recordString}')
     return
 
 async def qm_add(cmd: ChatCommand):
@@ -153,6 +187,15 @@ async def qm_add(cmd: ChatCommand):
     return
 
 async def qm_remove(cmd: ChatCommand):
+    proceed = False
+
+    if 'broadcaster' in cmd.user.badges or 'learuis' in cmd.user.name:
+        proceed = True
+
+    if not proceed:
+        await cmd.reply(f'Only {cmd.room.name} can clear the dungeon queue!')
+        return
+
     try:
         int(cmd.parameter)
     except ValueError:
@@ -197,13 +240,23 @@ async def qm_queue(cmd: ChatCommand):
         current_dungeon = result[0]
         if len(result) > 1:
             next_dungeon = result[1]
-            next_text = f' Next: {next_dungeon[0]}'
+            next_text = f' ***Next: ({next_dungeon[0]}) {next_dungeon[1]}'
             is_are = f'are'
             s = f's'
-        await cmd.reply(f'There {is_are} {len(result)} dungeon{s} in the queue. Current: {current_dungeon[0]}{next_text}')
+        await cmd.reply(f'There {is_are} {len(result)} dungeon{s} in the queue. ***Current: ({current_dungeon[0]}) '
+                        f'{current_dungeon[1]}{next_text}')
         return
 
 async def qm_next(cmd: ChatCommand):
+    proceed = False
+
+    if 'broadcaster' in cmd.user.badges or 'learuis' in cmd.user.name:
+        proceed = True
+
+    if not proceed:
+        await cmd.reply(f'Only {cmd.room.name} can clear the dungeon queue!')
+        return
+
     next_text = f''
 
     con = sqlite3.connect(f'data/dungeon_database.db'.encode('utf-8'))
@@ -219,7 +272,7 @@ async def qm_next(cmd: ChatCommand):
         current_dungeon = result[0]
         if len(result) > 1:
             next_dungeon = result[1]
-            next_text = f' Next: {next_dungeon[0]}'
+            next_text = f' Next: ({next_dungeon[0]}) {next_dungeon[1]}'
             query = (f'delete from dungeon_queue '
                      f'where channel_name = \'{TARGET_CHANNEL}\' '
                      f'and added_at in ( select added_at from dungeon_queue where channel_name = \'{TARGET_CHANNEL}\' '
@@ -242,8 +295,22 @@ async def qm_next(cmd: ChatCommand):
             return
 
 async def qm_clear(cmd: ChatCommand):
+    proceed = False
+
+    if 'broadcaster' in cmd.user.badges or 'learuis' in cmd.user.name:
+        proceed = True
+
+    if not proceed:
+        await cmd.reply(f'Only {cmd.room.name} can clear the dungeon queue!')
+        return
+
     con = sqlite3.connect(f'data/dungeon_database.db'.encode('utf-8'))
     cur = con.cursor()
+    # print(cmd.user.mod)
+    # print(cmd.id)
+    # print(cmd.name)
+    # print(cmd.user.badges)
+
 
     query = f'delete from dungeon_queue where channel_name = \'{TARGET_CHANNEL}\''
     cur.execute(f"{query}")
